@@ -16,6 +16,7 @@ import { z } from "zod";
 // as JSON Schema, and patterns/minimums are not reliably supported in strict
 // mode. Everything is re-validated below instead.
 const Enquiry = z.object({
+  clientName: z.string().nullable(),
   eventType: z.string().nullable(),
   arrivalDate: z.string().nullable(),
   nights: z.number().nullable(),
@@ -27,6 +28,7 @@ const Enquiry = z.object({
 });
 
 export type ParsedEnquiry = {
+  clientName: string | null;
   eventType: string | null;
   arrivalDate: string | null;
   nights: number | null;
@@ -70,6 +72,9 @@ export async function parseEnquiry(
       instructions: [
         "Extract booking details from a hotel enquiry email.",
         "Use null for anything not clearly stated. Never guess or infer a value.",
+        "clientName is the organisation the enquiry comes FROM - the sender's own",
+        "company, usually in the signature. The email is addressed to a hotel and",
+        "will not name it, so never put the hotel there and never infer one.",
         "arrivalDate must be an ISO date (YYYY-MM-DD), or null if no specific date is stated.",
         "items lists only what the email explicitly asks for, as short labels such as",
         "'conference room' or 'dinner'. Never include a price: you are not told prices",
@@ -86,6 +91,7 @@ export async function parseEnquiry(
     // Re-validate everything the model returned. A schema the provider accepted
     // is not the same as a value this app can use.
     const enquiry: ParsedEnquiry = {
+      clientName: output.clientName?.trim().slice(0, 200) || null,
       eventType: output.eventType?.trim() || null,
       arrivalDate:
         output.arrivalDate && ISO_DATE.test(output.arrivalDate.trim())

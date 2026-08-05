@@ -17,6 +17,9 @@ const blank = (v: unknown) =>
 const NewProposal = z.object({
   hotelName: z.string().trim().min(1).max(120),
   eventName: z.string().trim().min(1).max(120),
+  // Who the proposal is for. Optional: an enquiry from a private individual
+  // has no company, and inventing one would be worse than leaving it blank.
+  clientName: z.preprocess(blank, z.string().trim().max(200).optional()),
   guestCount: z.preprocess(
     blank,
     z.coerce.number().int().positive().max(10000).optional(),
@@ -57,6 +60,7 @@ const LineItem = z.object({
 // trusted. Anything that does not match is dropped, not rejected: a bad blob
 // should not stop a human creating a proposal they have already checked.
 const EnquiryRecord = z.object({
+  clientName: z.string().max(200).nullable(),
   eventType: z.string().max(200).nullable(),
   arrivalDate: z.string().max(20).nullable(),
   nights: z.number().int().nullable(),
@@ -77,7 +81,8 @@ export async function createProposal(
   // A flat message: returning parsed.error would leak the schema shape.
   if (!parsed.success) return { error: "Please check the fields." };
 
-  const { hotelName, eventName, guestCount, arrivalDate, nights } = parsed.data;
+  const { hotelName, eventName, clientName, guestCount, arrivalDate, nights } =
+    parsed.data;
 
   const enquiryRaw = String(formData.get("enquiry") ?? "");
   let enquiry: string | null = null;
@@ -132,11 +137,12 @@ export async function createProposal(
   await sql.transaction([
     sql`
       insert into proposals
-        (id, share_token, hotel_name, event_name, guest_count,
+        (id, share_token, hotel_name, event_name, client_name, guest_count,
          arrival_date, nights, status, enquiry)
       values
-        (${id}, ${token}, ${hotelName}, ${eventName}, ${guestCount ?? null},
-         ${arrivalDate ?? null}, ${nights ?? null}, 'sent', ${enquiry}::jsonb)
+        (${id}, ${token}, ${hotelName}, ${eventName}, ${clientName ?? null},
+         ${guestCount ?? null}, ${arrivalDate ?? null}, ${nights ?? null},
+         'sent', ${enquiry}::jsonb)
     `,
     ...items.map(
       (it, i) => sql`

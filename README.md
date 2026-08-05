@@ -104,9 +104,16 @@ have nothing to bind to. Prices are always entered by a human.
 Nothing the model returns is written to the database unchecked: the extraction
 is re-validated server-side, an unparseable date is discarded rather than
 stored, and a human confirms every value in the form before a proposal exists.
-The hotel name is deliberately *not* extracted — the buyer is emailing the
-hotel and never names it, so the only company in the email is the buyer's own.
-In a real system it comes from the authenticated user's tenant.
+
+**What is left out of the extraction schema matters as much as what is in it.**
+There is no `hotelName` field. The hotel is the *recipient* — an enquiry is
+addressed to it and never names it, so the only company in the email is the
+sender's own. Ask a model for a hotel and it will hand back the buyer's company,
+and every proposal ends up filed under the wrong name in a way that looks
+entirely plausible. The sender's company is therefore extracted as
+`client_name`, which is what it actually is, and `hotel_name` comes from the
+authenticated user's tenant in any real system — it is typed here only because
+there is no auth.
 
 ## What I'd do next
 

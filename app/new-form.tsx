@@ -69,6 +69,7 @@ export function NewProposalForm() {
           <p className="font-medium">
             Extracted · confidence {enquiry.confidence}
           </p>
+          <Field label="Client" value={enquiry.clientName} />
           <Field label="Event" value={enquiry.eventType} />
           <Field label="Arrival" value={enquiry.arrivalDate} />
           <Field label="Nights" value={enquiry.nights} />
@@ -99,11 +100,19 @@ export function NewProposalForm() {
         {enquiry && (
           <input type="hidden" name="enquiry" value={JSON.stringify(enquiry)} />
         )}
-        <input
-          name="hotelName"
-          placeholder="Hotel"
-          className="border p-2 w-full"
-        />
+        <div className="flex gap-2">
+          <input
+            name="hotelName"
+            placeholder="Hotel (yours)"
+            className="border p-2 flex-1 min-w-0"
+          />
+          <input
+            name="clientName"
+            placeholder="Client (optional)"
+            defaultValue={enquiry?.clientName ?? ""}
+            className="border p-2 flex-1 min-w-0"
+          />
+        </div>
         <input
           name="eventName"
           placeholder="Event"

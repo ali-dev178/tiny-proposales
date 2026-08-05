@@ -10,6 +10,7 @@ type Row = {
   id: string;
   hotel_name: string;
   event_name: string;
+  client_name: string | null;
   guest_count: number | null;
   arrival_date: string | null;
   nights: number | null;
@@ -39,7 +40,8 @@ export default async function SharePage({
   // Looked up by share_token, never by id: the token is the only thing
   // guarding this page, and there is no login.
   const rows = (await sql`
-    select id, hotel_name, event_name, guest_count, nights, currency, status, version,
+    select id, hotel_name, event_name, client_name, guest_count, nights,
+           currency, status, version,
            to_char(arrival_date, 'YYYY-MM-DD') as arrival_date
     from proposals
     where share_token = ${token}
@@ -67,6 +69,9 @@ export default async function SharePage({
   return (
     <main className="mx-auto max-w-2xl p-8 space-y-4">
       <h1 className="text-2xl font-bold">{proposal.event_name}</h1>
+      {proposal.client_name && (
+        <p className="text-gray-600">Prepared for {proposal.client_name}</p>
+      )}
       <p className="text-gray-600">
         {proposal.hotel_name} · {proposal.guest_count ?? "?"} guests
         {proposal.arrival_date && ` · arriving ${proposal.arrival_date}`}

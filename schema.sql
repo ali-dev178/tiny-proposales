@@ -41,6 +41,12 @@ alter table line_items add column if not exists position int not null default 0;
 alter table proposals add column if not exists arrival_date date;
 alter table proposals add column if not exists nights int;
 
+-- Who the proposal is FOR. Distinct from hotel_name, which is who it is FROM:
+-- an enquiry names the sender's own company and never the hotel it is
+-- addressed to, so conflating the two would file every proposal under the
+-- buyer's name.
+alter table proposals add column if not exists client_name text;
+
 -- Hybrid on purpose. Columns hold what the product reasons about, so the
 -- database can enforce it: an enum for status, not-null where it matters, a
 -- date that must be a date. This holds what the product merely records - the
