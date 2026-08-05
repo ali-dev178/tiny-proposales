@@ -9,7 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.30",
     "@neondatabase/serverless": "^1.1.0",
+    "ai": "^7.0.52",
     "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
