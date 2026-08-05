@@ -106,14 +106,17 @@ is re-validated server-side, an unparseable date is discarded rather than
 stored, and a human confirms every value in the form before a proposal exists.
 
 **What is left out of the extraction schema matters as much as what is in it.**
-There is no `hotelName` field. The hotel is the *recipient* — an enquiry is
-addressed to it and never names it, so the only company in the email is the
-sender's own. Ask a model for a hotel and it will hand back the buyer's company,
-and every proposal ends up filed under the wrong name in a way that looks
-entirely plausible. The sender's company is therefore extracted as
-`client_name`, which is what it actually is, and `hotel_name` comes from the
-authenticated user's tenant in any real system — it is typed here only because
-there is no auth.
+There is no `hotelName` field, and the selling hotel is not a form field either.
+Hotels use this product themselves, so the selling hotel is the *tenant* — with
+auth it comes from the session, and a seller would never type it. It is a
+constant (`SELLING_HOTEL` in `app/actions.ts`) standing in for that lookup.
+
+A text box would have been worse than the constant: it makes the provenance of a
+proposal whatever the seller typed, when it should be a fact the system owns.
+And asking the model for it would be worse still — an enquiry names exactly one
+company, the sender's own, so the model would return the buyer and every
+proposal would be filed under the wrong name, plausibly enough that nobody would
+notice. That company is extracted as `client_name`, which is what it actually is.
 
 ## What I'd do next
 

@@ -14,8 +14,14 @@ import { sql } from "@/lib/db";
 const blank = (v: unknown) =>
   typeof v === "string" && v.trim() === "" ? undefined : v;
 
+// Hotels use this product themselves, so the selling hotel is the tenant: with
+// auth it would come from the session, and a seller would never type it. It is
+// a constant here rather than a form field because a text box would make the
+// provenance of a proposal whatever the seller happened to type, when it should
+// be a fact the system owns. Replace with the tenant lookup when auth exists.
+const SELLING_HOTEL = "Grand Hôtel Stockholm";
+
 const NewProposal = z.object({
-  hotelName: z.string().trim().min(1).max(120),
   eventName: z.string().trim().min(1).max(120),
   // Who the proposal is for. Optional: an enquiry from a private individual
   // has no company, and inventing one would be worse than leaving it blank.
@@ -81,8 +87,7 @@ export async function createProposal(
   // A flat message: returning parsed.error would leak the schema shape.
   if (!parsed.success) return { error: "Please check the fields." };
 
-  const { hotelName, eventName, clientName, guestCount, arrivalDate, nights } =
-    parsed.data;
+  const { eventName, clientName, guestCount, arrivalDate, nights } = parsed.data;
 
   const enquiryRaw = String(formData.get("enquiry") ?? "");
   let enquiry: string | null = null;
@@ -140,7 +145,7 @@ export async function createProposal(
         (id, share_token, hotel_name, event_name, client_name, guest_count,
          arrival_date, nights, status, enquiry)
       values
-        (${id}, ${token}, ${hotelName}, ${eventName}, ${clientName ?? null},
+        (${id}, ${token}, ${SELLING_HOTEL}, ${eventName}, ${clientName ?? null},
          ${guestCount ?? null}, ${arrivalDate ?? null}, ${nights ?? null},
          'sent', ${enquiry}::jsonb)
     `,

@@ -100,19 +100,12 @@ export function NewProposalForm() {
         {enquiry && (
           <input type="hidden" name="enquiry" value={JSON.stringify(enquiry)} />
         )}
-        <div className="flex gap-2">
-          <input
-            name="hotelName"
-            placeholder="Hotel"
-            className="border p-2 flex-1 min-w-0"
-          />
-          <input
-            name="clientName"
-            placeholder="Client (optional)"
-            defaultValue={enquiry?.clientName ?? ""}
-            className="border p-2 flex-1 min-w-0"
-          />
-        </div>
+        <input
+          name="clientName"
+          placeholder="Client (optional)"
+          defaultValue={enquiry?.clientName ?? ""}
+          className="border p-2 w-full"
+        />
         <input
           name="eventName"
           placeholder="Event"
