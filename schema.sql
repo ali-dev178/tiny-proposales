@@ -1,6 +1,13 @@
 -- tiny-proposales schema. Applied with: node --env-file=.env.local <runner>
 -- Idempotent so it can be re-run against an existing database.
 
+-- The status set is closed and stable, so it is enforced by the database
+-- rather than by convention. `create type` has no `if not exists`.
+do $$ begin
+  create type proposal_status as enum ('draft', 'sent', 'accepted');
+exception when duplicate_object then null;
+end $$;
+
 create table if not exists proposals (
   id            uuid primary key default gen_random_uuid(),
   share_token   text unique not null,
@@ -8,7 +15,7 @@ create table if not exists proposals (
   event_name    text not null,
   guest_count   int,
   currency      text not null default 'SEK',
-  status        text not null default 'draft',
+  status        proposal_status not null default 'draft',
   version       int  not null default 1,
   created_at    timestamptz not null default now()
 );

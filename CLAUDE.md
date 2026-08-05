@@ -52,7 +52,9 @@ Next.js App Router on Vercel, Neon Postgres, no API layer and no client-side dat
 - `app/p/[token]/page.tsx` — public buyer-facing share page, keyed by random token, `robots: { index: false, follow: false }`.
 - `app/actions-ai.ts` — AI SDK `generateText` with `Output.object({ schema })` for enquiry parsing.
 
-Three tables: `proposals`, `line_items`, `acceptances`.
+Three tables: `proposals`, `line_items`, `acceptances`, plus a `proposal_status` enum type (`draft | sent | accepted`). `proposals.status` uses it, so an invalid status is rejected by Postgres rather than by whichever code path remembered to check. Mirror it in TypeScript as a string union (`type ProposalStatus = "draft" | "sent" | "accepted"`), never as bare `string`. Adding a value later is `alter type … add value`; removing one requires recreating the type.
+
+`schema.sql` at the repo root is the source of truth and is idempotent — safe to re-run against an existing database.
 
 `params` in a page is a `Promise` and must be awaited (`const { token } = await params`). Verified against the vendored docs for the installed version, not assumed.
 
