@@ -103,7 +103,7 @@ export function NewProposalForm() {
         <div className="flex gap-2">
           <input
             name="hotelName"
-            placeholder="Hotel (yours)"
+            placeholder="Hotel"
             className="border p-2 flex-1 min-w-0"
           />
           <input
