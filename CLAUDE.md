@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state
 
-The repository contains **no application code yet** — only `plan/proposalesbuildplan.html`, a self-contained plan for building the app, and the `.claude/` harness. Git is initialized on `main` with a repo-local personal identity; there is no `package.json` and no `node_modules`. Read the plan before writing code; it specifies the schema, the file layout, and the reasoning behind each decision.
+**Step 1 of 8 is done**: the Next.js app is scaffolded and the gate (typecheck, lint, build) is green. No database, no pages beyond the default, no features yet. Git is on `main` with a repo-local personal identity. Read `plan/proposalesbuildplan.html` before writing code — it specifies the schema, the file layout, and the reasoning behind each decision.
 
 `plan/` is gitignored on purpose: it is interview prep, and the repo it produces is meant to be shown to the employer. Never commit it, never move its contents into a tracked path, and do not quote it in commit messages or the README.
 
@@ -21,21 +21,16 @@ The search feature filters whole `<section>` elements by text and `details.qa` e
 
 ## Scaffolding the app
 
-The plan's step 1 runs `npx create-next-app@latest tiny-proposales`, which would nest a directory inside this one — this directory is already named `tiny-proposales`. But scaffolding in place with `create-next-app .` will also fail: it refuses to write into a directory containing files outside its small allowlist, and `CLAUDE.md` and `plan/` are not on it (`.gitignore` is). Scaffold into a temp directory and move the result in:
+Already done (step 1). It was scaffolded into a temp directory and moved in, because `create-next-app .` refuses to write into a directory holding files outside its allowlist. Two things it clobbered on the way in, both restored from the `step 0` commit — **expect this again if anyone re-scaffolds**:
 
-```bash
-npx create-next-app@latest ../tp-scaffold
-# TypeScript: Yes · Tailwind: Yes · App Router: Yes · Turbopack: Yes
-# src/ directory: No · import alias: default
+- **`.gitignore`** — replaced wholesale. The `plan/` line is what keeps interview prep out of a public repo. The project-specific rules are now grouped under a header at the top of the file; re-add that block if it ever disappears.
+- **`CLAUDE.md`** — replaced with a one-line `@AGENTS.md` pointer. `AGENTS.md` is generated and re-added by `next dev`, so it is committed on purpose and imported from the bottom of this file rather than being allowed to replace it.
 
-# move everything including dotfiles, then discard the empty shell
-mv ../tp-scaffold/{.,}* . 2>/dev/null; rmdir ../tp-scaffold
-npm install @neondatabase/serverless zod
-```
+**Installed versions differ from the plan document**, which was written against Next 15: this is **Next 16.3.0 / React 19.2.8**. `AGENTS.md` warns that this Next may not match training data and points at authoritative docs vendored in `node_modules/next/dist/docs/` — read those before writing framework code rather than working from memory.
 
-**After scaffolding, re-check `.gitignore`** — create-next-app writes its own, which will drop the `plan/` line. Re-add it before the first commit, or the plan ends up on GitHub. Verify with `git status --porcelain --ignored | grep plan` once the repo exists.
+**Local builds use webpack, not Turbopack.** Next 16 defaults to Turbopack, which requires the native SWC binary, and this machine's Windows Application Control policy blocks it (`@next/swc-win32-x64-msvc` → "An Application Control policy has blocked this file"); only WASM bindings load, and Turbopack refuses to run on WASM. So `dev` and `build` carry `--webpack`. The warning is noisy but harmless. If the policy is ever lifted, dropping `--webpack` from both scripts restores the plan's intended setup.
 
-After scaffolding, the standard Next.js scripts apply (`npm run dev`, `npm run build`, `npm run lint`). The plan specifies **no test suite** — do not add one unless asked; "no tests" is listed as a deliberate, disclosed gap in the README.
+The standard scripts apply (`npm run dev`, `npm run build`, `npm run lint`). The plan specifies **no test suite** — do not add one unless asked; "no tests" is listed as a deliberate, disclosed gap in the README. The `evaluator` agent verifies behaviour by running the app instead.
 
 Database and deploy setup:
 
@@ -59,7 +54,7 @@ Next.js App Router on Vercel, Neon Postgres, no API layer and no client-side dat
 
 Three tables: `proposals`, `line_items`, `acceptances`.
 
-Note Next 15 semantics: `params` in a page is a `Promise` and must be awaited (`const { token } = await params`).
+`params` in a page is a `Promise` and must be awaited (`const { token } = await params`). Verified against the vendored docs for the installed version, not assumed.
 
 ## Non-negotiable decisions
 
@@ -115,3 +110,6 @@ Deployment is the Vercel GitHub integration: every push to `main` deploys. Do no
 ## Scope discipline
 
 The plan sets a hard checkpoint: if a step overruns by 5 minutes, cut it and move it to the README's "What I'd do next" list. The AI step (step 7) is explicitly optional and should be skipped in favour of the README if time is short. When adding scope, prefer recording it in the README over building it.
+
+# Next.js version rules (generated, re-added by `next dev`)
+@AGENTS.md

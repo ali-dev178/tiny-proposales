@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(node -e *), Bash(npx --no tsc --noEmit), Bash(npm run lint), Bash(npm run build), Read, Edit, Grep, Glob
+allowed-tools: Bash(node -e *), Bash(npx --no -- tsc --noEmit), Bash(npm run lint), Bash(npm run build), Read, Edit, Grep, Glob
 description: Pre-commit gate - typecheck, lint, build; fix what fails; report honestly
 ---
 
@@ -9,7 +9,7 @@ If that line reads `NO_PACKAGE_JSON`, the app is not scaffolded yet. Report `not
 
 Run the gate in this order, one command at a time, and read the whole output of each:
 
-1. `npx --no tsc --noEmit`
+1. `npx --no -- tsc --noEmit`
 2. `npm run lint`
 3. `npm run build`
 
