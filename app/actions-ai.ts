@@ -21,9 +21,12 @@ const Enquiry = z.object({
 
 export type ParsedEnquiry = z.infer<typeof Enquiry>;
 
+// A failed parse carries the submitted text back. React resets uncontrolled
+// form fields once an action completes, so without this the pasted email is
+// thrown away on the one path where the user still needs it.
 export type ParseEnquiryState =
   | { enquiry: ParsedEnquiry }
-  | { error: string };
+  | { error: string; emailBody: string };
 
 // Anyone who can email the hotel controls this string, so it is bounded and
 // passed as `prompt` (data) rather than folded into `instructions`.
@@ -33,9 +36,14 @@ export async function parseEnquiry(
   _prev: ParseEnquiryState | undefined,
   formData: FormData,
 ): Promise<ParseEnquiryState> {
-  const parsed = EmailBody.safeParse(formData.get("emailBody"));
+  const raw = String(formData.get("emailBody") ?? "");
+
+  const parsed = EmailBody.safeParse(raw);
   if (!parsed.success) {
-    return { error: "Paste an enquiry email first (8000 characters max)." };
+    return {
+      error: "Paste an enquiry email first (8000 characters max).",
+      emailBody: raw,
+    };
   }
 
   try {
@@ -52,6 +60,9 @@ export async function parseEnquiry(
     return { enquiry: output };
   } catch {
     // Never surface the provider error: it can echo the prompt back.
-    return { error: "Could not read that enquiry. Enter the details manually." };
+    return {
+      error: "Could not read that enquiry. Enter the details manually.",
+      emailBody: parsed.data,
+    };
   }
 }

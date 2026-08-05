@@ -43,6 +43,9 @@ export function NewProposalForm() {
           id="emailBody"
           name="emailBody"
           rows={4}
+          defaultValue={
+            parseState && "error" in parseState ? parseState.emailBody : ""
+          }
           className="border p-2 w-full"
         />
         {parseState && "error" in parseState && (
