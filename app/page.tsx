@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { sql, type ProposalStatus } from "@/lib/db";
+import { NewProposalForm } from "./new-form";
 
 type Row = {
   id: string;
@@ -23,6 +24,7 @@ export default async function Home() {
   return (
     <main className="mx-auto max-w-2xl p-8 space-y-8">
       <h1 className="text-2xl font-bold">Proposals</h1>
+      <NewProposalForm />
 
       {rows.length === 0 ? (
         <p className="text-gray-500">No proposals yet.</p>
