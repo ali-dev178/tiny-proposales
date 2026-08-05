@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createProposal, type CreateProposalState } from "./actions";
 import { parseEnquiry, type ParseEnquiryState } from "./actions-ai";
 
@@ -30,6 +30,8 @@ export function NewProposalForm() {
 
   const enquiry =
     parseState && "enquiry" in parseState ? parseState.enquiry : null;
+
+  const [lineCount, setLineCount] = useState(2);
 
   return (
     <div className="space-y-4">
@@ -90,6 +92,40 @@ export function NewProposalForm() {
           defaultValue={enquiry?.guestCount ?? ""}
           className="border p-2 w-full"
         />
+        <div className="space-y-2 pt-2">
+          <p className="text-sm text-gray-600">
+            Line items — prices in whole currency units, e.g. 1250.00
+          </p>
+          {Array.from({ length: lineCount }, (_, i) => (
+            <div key={i} className="flex gap-2">
+              <input
+                name="itemLabel"
+                placeholder="Description"
+                className="border p-2 flex-1 min-w-0"
+              />
+              <input
+                name="itemQuantity"
+                placeholder="Qty"
+                type="number"
+                defaultValue="1"
+                className="border p-2 w-20"
+              />
+              <input
+                name="itemPrice"
+                placeholder="Unit price"
+                className="border p-2 w-28"
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setLineCount((c) => c + 1)}
+            className="text-sm underline text-gray-600"
+          >
+            Add line
+          </button>
+        </div>
+
         {createState && "error" in createState && (
           <p className="text-red-600 text-sm">{createState.error}</p>
         )}

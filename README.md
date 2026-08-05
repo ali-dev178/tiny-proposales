@@ -38,8 +38,18 @@ Application Control policy. Removing the flag is the intended setup.
 generate step, and every query is visible at the point it runs. Interpolations
 in a tagged template are parameterised by the driver.
 
-**Money as integers.** Prices are stored in minor units (`unit_price_minor`).
-Floats lose money.
+**Money as integers.** Prices are stored in minor units (`unit_price_minor`)
+and stay integers through summing and comparison; the only division happens at
+the point of display. The storage decision only holds if the *parse* is exact
+too, so a price is read as a decimal string and the integer is built from its
+parts rather than by multiplying: `"19.99" * 100` is `1998.9999999999998`, and
+truncating that loses an öre. Of ten realistic prices, five lose money that way.
+
+**A proposal is written in one transaction.** The proposal id is generated in
+the action rather than by the database, so the proposal and its line items are
+inserted together. A proposal saved without its prices would be worse than one
+that failed outright. Line order is stored in `position`, because uuid primary
+keys carry no insertion order and the order of lines is commercially meaningful.
 
 **Status is a Postgres enum.** `proposal_status` is a real type, so an invalid
 status is rejected by the database rather than by whichever code path
@@ -81,9 +91,9 @@ the instructions.
 
 ## What I'd do next
 
-- **Line items.** The `line_items` table, `unit_price_minor` and `currency`
-  exist in the schema but no UI reads or writes them, so the money handling
-  above is currently a schema decision rather than a working feature.
+- **Editing a proposal.** Line items can be created but not changed, and
+  nothing increments `version` yet — so the optimistic lock is proven by test
+  rather than reachable through the UI.
 - **Immutable proposal versions** rather than a counter, so an accepted
   proposal can be reproduced exactly as the buyer saw it.
 - **Real auth and tenant scoping.** Every Server Action would need its own
@@ -105,9 +115,10 @@ demonstrated. No authentication, no tenant isolation, no rate limiting, no
 automated tests, no error boundaries, and no design work — the styling is
 default Tailwind utilities and nothing more.
 
-The features that exist have been exercised end to end: creating a proposal,
-opening the share link unauthenticated, accepting it, replaying an accept
-request, and submitting a stale version. The AI extraction has been verified
+The features that exist have been exercised end to end: creating a proposal
+with line items, opening the share link unauthenticated, accepting it,
+replaying an accept request, submitting a stale version, and checking that a
+price survives the round trip to the öre. The AI extraction has been verified
 for input validation and for its behaviour without an API key; the model call
 itself has not been exercised against a live key.
 

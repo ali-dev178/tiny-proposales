@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state
 
-**Step 1 of 8 is done**: the Next.js app is scaffolded and the gate (typecheck, lint, build) is green. No database, no pages beyond the default, no features yet. Git is on `main` with a repo-local personal identity. Read `plan/proposalesbuildplan.html` before writing code — it specifies the schema, the file layout, and the reasoning behind each decision.
+**All eight steps are done and deployed** to https://tiny-proposales.vercel.app — create a proposal with line items, share it by token, accept it under an optimistic lock, and parse an enquiry email. Line items were added after step 8 to close a gap where the schema claimed more than the UI delivered.
+
+Outstanding: `OPENAI_API_KEY` is not set on the Vercel project, so the AI parser degrades to an error message and its model call has never run. Editing a proposal does not exist, so nothing increments `version` through the UI — the optimistic lock is proven by test, not reachable by clicking.
+
+Read `plan/proposalesbuildplan.html` before changing anything structural; it carries the reasoning behind each decision.
 
 `plan/` is gitignored on purpose: it is interview prep, and the repo it produces is meant to be shown to the employer. Never commit it, never move its contents into a tracked path, and do not quote it in commit messages or the README.
 
@@ -78,7 +82,7 @@ Short on purpose. These are conventions, not the non-negotiables above — but f
 - **SQL is lowercase**, one statement per tagged template. Interpolate values only with `${}` — the Neon driver parameterises those. Never build a query by string concatenation, and never pass a concatenated string to `sql()`.
 - **Every list query gets a `LIMIT`.** Unbounded selects do not ship.
 - **snake_case stops at the database boundary.** Columns and `Row` fields stay snake_case (`hotel_name`, `share_token`); everything else in TypeScript is camelCase. Do not rename fields halfway through a layer — map once, at the point of use.
-- **Money columns and fields carry a `_minor` suffix** and are integers end to end. Convert for display only, in the JSX that renders it.
+- **Money columns and fields carry a `_minor` suffix** and are integers end to end. Convert for display only, in the JSX that renders it. **Parse decimals as strings**, never `Number(x) * 100` — `"19.99" * 100` is `1998.9999999999998`, and truncating loses an öre. Split on `.` and build the integer from the parts (`MoneyMinor` in `app/actions.ts`).
 - **Server Actions return `{ ok: true }` or `{ error: string }`** — never throw for a failure the user is meant to read. Every mutation ends with `revalidatePath`.
 - **Server Components by default.** Add `"use client"` only for genuine interactivity (the create form, the accept button), and keep those leaves small.
 - **Missing rows call `notFound()`**, not a redirect and not an empty render.

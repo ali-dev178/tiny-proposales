@@ -24,10 +24,15 @@ create table if not exists proposals (
 create table if not exists line_items (
   id               uuid primary key default gen_random_uuid(),
   proposal_id      uuid not null references proposals(id) on delete cascade,
+  position         int  not null default 0,
   label            text not null,
   quantity         int  not null default 1,
   unit_price_minor int  not null
 );
+
+-- Line order is commercially meaningful, and uuid primary keys carry no
+-- insertion order, so it is stored rather than inferred.
+alter table line_items add column if not exists position int not null default 0;
 
 -- proposal_version records which version of the proposal the buyer actually
 -- saw and accepted, so a mid-read edit by the seller is detectable.

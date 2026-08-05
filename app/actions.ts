@@ -1,6 +1,6 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { sql } from "@/lib/db";
@@ -19,6 +19,24 @@ const NewProposal = z.object({
   ),
 });
 
+// "1250.50" -> 125050, by string arithmetic rather than `* 100`. Floating
+// point multiplication is the exact bug that storing minor units avoids:
+// 1250.55 * 100 === 125054.99999999999.
+const MoneyMinor = z
+  .string()
+  .trim()
+  .regex(/^\d{1,7}(\.\d{1,2})?$/)
+  .transform((s) => {
+    const [whole, frac = ""] = s.split(".");
+    return Number(whole) * 100 + Number((frac + "00").slice(0, 2));
+  });
+
+const LineItem = z.object({
+  label: z.string().trim().min(1).max(200),
+  quantity: z.coerce.number().int().positive().max(10000),
+  unitPriceMinor: MoneyMinor,
+});
+
 export type CreateProposalState = { ok: true } | { error: string };
 
 export async function createProposal(
@@ -31,14 +49,53 @@ export async function createProposal(
 
   const { hotelName, eventName, guestCount } = parsed.data;
 
+  // Line items arrive as parallel arrays, so getAll rather than
+  // Object.fromEntries, which keeps only the last value of a repeated name.
+  const labels = formData.getAll("itemLabel").map(String);
+  const quantities = formData.getAll("itemQuantity").map(String);
+  const prices = formData.getAll("itemPrice").map(String);
+
+  const items: z.infer<typeof LineItem>[] = [];
+  for (let i = 0; i < labels.length; i++) {
+    const raw = {
+      label: labels[i] ?? "",
+      quantity: quantities[i] ?? "",
+      unitPriceMinor: prices[i] ?? "",
+    };
+    // An unused row is not an error. Quantity is ignored in this test because
+    // it carries a default of 1, so an untouched row still has a value there.
+    if (raw.label.trim() === "" && raw.unitPriceMinor.trim() === "") continue;
+
+    const item = LineItem.safeParse(raw);
+    if (!item.success) {
+      return {
+        error: "Each line needs a description, a whole quantity, and a price like 1250.00.",
+      };
+    }
+    items.push(item.data);
+  }
+
   // 128 bits of randomness. A sequential id would make /p/2 someone else's
   // proposal; this token is the only thing guarding the share link.
   const token = randomBytes(16).toString("base64url");
 
-  await sql`
-    insert into proposals (share_token, hotel_name, event_name, guest_count, status)
-    values (${token}, ${hotelName}, ${eventName}, ${guestCount ?? null}, 'sent')
-  `;
+  // The id is generated here rather than by the database so the proposal and
+  // its lines go in as one transaction. A proposal that saved without its
+  // prices would be worse than one that failed outright.
+  const id = randomUUID();
+
+  await sql.transaction([
+    sql`
+      insert into proposals (id, share_token, hotel_name, event_name, guest_count, status)
+      values (${id}, ${token}, ${hotelName}, ${eventName}, ${guestCount ?? null}, 'sent')
+    `,
+    ...items.map(
+      (it, i) => sql`
+        insert into line_items (proposal_id, position, label, quantity, unit_price_minor)
+        values (${id}, ${i}, ${it.label}, ${it.quantity}, ${it.unitPriceMinor})
+      `,
+    ),
+  ]);
 
   revalidatePath("/");
   return { ok: true };
