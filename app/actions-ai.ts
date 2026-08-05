@@ -69,9 +69,17 @@ export async function parseEnquiry(
   try {
     const { output } = await generateText({
       model: openai("gpt-4o"),
+      // Extraction, not generation. At the default temperature the same email
+      // yields different fields between runs - an event named once and null the
+      // next time - which is unusable when a human is checking the output
+      // against the email in front of them.
+      temperature: 0,
       instructions: [
         "Extract booking details from a hotel enquiry email.",
         "Use null for anything not clearly stated. Never guess or infer a value.",
+        "eventType is the kind of event being booked, such as 'annual sales kickoff',",
+        "'wedding' or 'training day'. It counts as stated even when phrased",
+        "possessively, as in 'our annual sales kickoff'.",
         "clientName is the organisation the enquiry comes FROM - the sender's own",
         "company, usually in the signature. The email is addressed to a hotel and",
         "will not name it, so never put the hotel there and never infer one.",
