@@ -1,0 +1,8 @@
+# core.autocrlf is on for this machine. Shell scripts must stay LF —
+# a CRLF .sh fails under sh/Git Bash with "\r: command not found",
+# which would silently disable the no-orm hook on a fresh clone.
+* text=auto eol=lf
+*.sh text eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

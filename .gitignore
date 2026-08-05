@@ -1,0 +1,20 @@
+# Local-only build plan / interview prep — never push this
+plan/
+
+# Secrets. `vercel env pull .env.local` writes DATABASE_URL here.
+.env
+.env*.local
+.vercel
+
+# Scratch file written and deleted by /db — must never survive into a commit
+db-query.mjs
+
+# Personal Claude Code overrides (the rest of .claude/ is committed on purpose)
+.claude/settings.local.json
+
+# Node / Next
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
