@@ -43,3 +43,53 @@ export async function createProposal(
   revalidatePath("/");
   return { ok: true };
 }
+
+// token and version arrive from the client, so they are validated here too.
+// The token is base64url, which includes "-" and "_" - do not narrow this to
+// [A-Za-z0-9] or roughly half of all valid tokens would be rejected.
+const AcceptProposal = z.object({
+  token: z.string().min(1).max(64),
+  version: z.coerce.number().int().positive(),
+});
+
+export type AcceptProposalState = { ok: true } | { error: string };
+
+type UpdatedRow = { id: string; version: number };
+
+export async function acceptProposal(
+  _prev: AcceptProposalState | undefined,
+  formData: FormData,
+): Promise<AcceptProposalState> {
+  const parsed = AcceptProposal.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: "Something went wrong. Please reload." };
+
+  const { token, version } = parsed.data;
+
+  // The optimistic lock. The update is conditional on the version the buyer
+  // was actually shown: if the seller changed the proposal while the buyer was
+  // reading it, zero rows update and the buyer is told, rather than silently
+  // accepting terms they never saw. `status != 'accepted'` makes it idempotent.
+  const updated = (await sql`
+    update proposals
+       set status = 'accepted'
+     where share_token = ${token}
+       and version = ${version}
+       and status != 'accepted'
+    returning id, version
+  `) as UpdatedRow[];
+
+  if (updated.length === 0) {
+    return {
+      error: "This proposal was updated. Please reload and review the changes.",
+    };
+  }
+
+  // Record which version was accepted, not merely that it was.
+  await sql`
+    insert into acceptances (proposal_id, proposal_version)
+    values (${updated[0].id}, ${updated[0].version})
+  `;
+
+  revalidatePath(`/p/${token}`);
+  return { ok: true };
+}

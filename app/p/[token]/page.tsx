@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { sql, type ProposalStatus } from "@/lib/db";
+import { AcceptButton } from "./accept-button";
 
 // A proposal contains prices. Public-by-link is not the same as public to
 // Google, so this route is never indexed.
@@ -38,8 +39,10 @@ export default async function SharePage({
       <p className="text-gray-600">
         {proposal.hotel_name} · {proposal.guest_count ?? "?"} guests
       </p>
-      {proposal.status === "accepted" && (
+      {proposal.status === "accepted" ? (
         <p className="text-green-700 font-medium">Accepted — thank you.</p>
+      ) : (
+        <AcceptButton token={token} version={proposal.version} />
       )}
     </main>
   );
