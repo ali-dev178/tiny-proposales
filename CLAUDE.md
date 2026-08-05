@@ -56,6 +56,8 @@ Next.js App Router on Vercel, Neon Postgres, no API layer and no client-side dat
 - `app/p/[token]/page.tsx` — public buyer-facing share page, keyed by random token, `robots: { index: false, follow: false }`.
 - `app/actions-ai.ts` — AI SDK `generateText` with `Output.object({ schema })` for enquiry parsing.
 
+**The schema is deliberately hybrid.** Columns hold what the product reasons about, so the database enforces it (`status` enum, `arrival_date` as a real date, `not null` where it matters). `proposals.enquiry jsonb` holds what the product only records — the raw AI extraction, whose shape follows the model schema rather than ours. A newly extracted field lands in jsonb with no migration; once the product makes decisions on it, promote it to a column with a constraint. Do not move constrained columns into jsonb: minor-unit money survives JSON fine (integers round-trip exactly), but the enum, the foreign key and every `not null` do not.
+
 Three tables: `proposals`, `line_items`, `acceptances`, plus a `proposal_status` enum type (`draft | sent | accepted`). `proposals.status` uses it, so an invalid status is rejected by Postgres rather than by whichever code path remembered to check. Mirror it in TypeScript as a string union (`type ProposalStatus = "draft" | "sent" | "accepted"`), never as bare `string`. Adding a value later is `alter type … add value`; removing one requires recreating the type.
 
 `schema.sql` at the repo root is the source of truth and is idempotent — safe to re-run against an existing database.

@@ -4,7 +4,13 @@ import { useActionState, useState } from "react";
 import { createProposal, type CreateProposalState } from "./actions";
 import { parseEnquiry, type ParseEnquiryState } from "./actions-ai";
 
-function Field({ label, value }: { label: string; value: string | number | null }) {
+function Field({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number | null;
+}) {
   return (
     <div className="flex gap-2">
       <span className="text-gray-500 w-28">{label}</span>
@@ -31,7 +37,9 @@ export function NewProposalForm() {
   const enquiry =
     parseState && "enquiry" in parseState ? parseState.enquiry : null;
 
-  const [lineCount, setLineCount] = useState(2);
+  const [extraLines, setExtraLines] = useState(0);
+  const items = enquiry?.items ?? [];
+  const lineCount = Math.max(2, items.length) + extraLines;
 
   return (
     <div className="space-y-4">
@@ -65,8 +73,19 @@ export function NewProposalForm() {
           <Field label="Arrival" value={enquiry.arrivalDate} />
           <Field label="Nights" value={enquiry.nights} />
           <Field label="Guests" value={enquiry.guestCount} />
+          <Field
+            label="Asked for"
+            value={
+              items.length
+                ? items
+                    .map((i) => (i.quantity ? `${i.quantity}× ${i.label}` : i.label))
+                    .join(", ")
+                : null
+            }
+          />
           <p className="text-gray-500 pt-1">
-            Check these before creating the proposal. Nothing is saved until you do.
+            Prices are never extracted — set them yourself. Check these before
+            creating the proposal. Nothing is saved until you do.
           </p>
         </div>
       )}
@@ -77,6 +96,9 @@ export function NewProposalForm() {
         action={createAction}
         className="border rounded p-4 space-y-2"
       >
+        {enquiry && (
+          <input type="hidden" name="enquiry" value={JSON.stringify(enquiry)} />
+        )}
         <input
           name="hotelName"
           placeholder="Hotel"
@@ -88,13 +110,29 @@ export function NewProposalForm() {
           defaultValue={enquiry?.eventType ?? ""}
           className="border p-2 w-full"
         />
-        <input
-          name="guestCount"
-          placeholder="Guests (optional)"
-          type="number"
-          defaultValue={enquiry?.guestCount ?? ""}
-          className="border p-2 w-full"
-        />
+        <div className="flex gap-2">
+          <input
+            name="guestCount"
+            placeholder="Guests (optional)"
+            type="number"
+            defaultValue={enquiry?.guestCount ?? ""}
+            className="border p-2 flex-1 min-w-0"
+          />
+          <input
+            name="arrivalDate"
+            type="date"
+            defaultValue={enquiry?.arrivalDate ?? ""}
+            className="border p-2 flex-1 min-w-0"
+          />
+          <input
+            name="nights"
+            placeholder="Nights"
+            type="number"
+            defaultValue={enquiry?.nights ?? ""}
+            className="border p-2 w-24"
+          />
+        </div>
+
         <div className="space-y-2 pt-2">
           <p className="text-sm text-gray-600">
             Line items — prices in whole currency units, e.g. 1250.00
@@ -104,13 +142,14 @@ export function NewProposalForm() {
               <input
                 name="itemLabel"
                 placeholder="Description"
+                defaultValue={items[i]?.label ?? ""}
                 className="border p-2 flex-1 min-w-0"
               />
               <input
                 name="itemQuantity"
                 placeholder="Qty"
                 type="number"
-                defaultValue="1"
+                defaultValue={items[i]?.quantity ?? 1}
                 className="border p-2 w-20"
               />
               <input
@@ -122,7 +161,7 @@ export function NewProposalForm() {
           ))}
           <button
             type="button"
-            onClick={() => setLineCount((c) => c + 1)}
+            onClick={() => setExtraLines((c) => c + 1)}
             className="text-sm underline text-gray-600"
           >
             Add line

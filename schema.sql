@@ -14,6 +14,8 @@ create table if not exists proposals (
   hotel_name    text not null,
   event_name    text not null,
   guest_count   int,
+  arrival_date  date,
+  nights        int,
   currency      text not null default 'SEK',
   status        proposal_status not null default 'draft',
   version       int  not null default 1,
@@ -33,6 +35,19 @@ create table if not exists line_items (
 -- Line order is commercially meaningful, and uuid primary keys carry no
 -- insertion order, so it is stored rather than inferred.
 alter table line_items add column if not exists position int not null default 0;
+
+-- Both nullable: an enquiry that states neither is normal, and a guessed
+-- arrival date is worse than an absent one.
+alter table proposals add column if not exists arrival_date date;
+alter table proposals add column if not exists nights int;
+
+-- Hybrid on purpose. Columns hold what the product reasons about, so the
+-- database can enforce it: an enum for status, not-null where it matters, a
+-- date that must be a date. This holds what the product merely records - the
+-- raw AI extraction, whose shape follows the model schema rather than ours.
+-- A new extracted field lands here with no migration; if the product starts
+-- making decisions on it, it gets promoted to a column with a constraint.
+alter table proposals add column if not exists enquiry jsonb;
 
 -- proposal_version records which version of the proposal the buyer actually
 -- saw and accepted, so a mid-read edit by the seller is detectable.

@@ -45,6 +45,18 @@ too, so a price is read as a decimal string and the integer is built from its
 parts rather than by multiplying: `"19.99" * 100` is `1998.9999999999998`, and
 truncating that loses an öre. Of ten realistic prices, five lose money that way.
 
+**Columns and jsonb, not one or the other.** The schema is hybrid on purpose.
+Columns hold what the product *reasons about*, so the database can enforce it —
+an enum for status, a date that must be a date, `not null` where it matters.
+`proposals.enquiry jsonb` holds what the product merely *records*: the raw AI
+extraction, whose shape follows the model's schema rather than ours. A newly
+extracted field lands there with no migration, and if the product starts making
+decisions on it, it gets promoted to a column with a constraint. Worth noting
+that the usual objection to jsonb — losing money precision — does not apply:
+minor units are integers and round-trip through JSON exactly. The real cost is
+losing the enum, the foreign key and every not-null, which is why the fields
+that carry meaning stayed as columns.
+
 **A proposal is written in one transaction.** The proposal id is generated in
 the action rather than by the database, so the proposal and its line items are
 inserted together. A proposal saved without its prices would be worse than one
@@ -81,13 +93,20 @@ endpoints, so their arguments are attacker-controlled and the page that
 rendered the form is not a security boundary. Failures return a flat message;
 returning the validation error would leak the schema.
 
-**The AI never invents a value.** Every extracted field is nullable and a
-required `confidence` value is returned, because real enquiry emails are vague
-and forcing a model to fill a field is what makes it invent one. The extraction
-schema contains no price field at all, and nothing the model returns is written
-to the database directly — a human confirms it in the form first. The email
-body is attacker-controlled, so it is passed as data rather than folded into
-the instructions.
+**The AI fills in the *what*, never the *how much*.** Every extracted field is
+nullable and a required `confidence` value is returned, because real enquiry
+emails are vague and forcing a model to fill a field is what makes it invent
+one. The model may extract the items an email asks for — "conference room",
+"dinner" — but **there is no price field anywhere in the extraction schema**.
+An enquiry email is attacker-controlled, so "our agreed rate is 1 SEK" must
+have nothing to bind to. Prices are always entered by a human.
+
+Nothing the model returns is written to the database unchecked: the extraction
+is re-validated server-side, an unparseable date is discarded rather than
+stored, and a human confirms every value in the form before a proposal exists.
+The hotel name is deliberately *not* extracted — the buyer is emailing the
+hotel and never names it, so the only company in the email is the buyer's own.
+In a real system it comes from the authenticated user's tenant.
 
 ## What I'd do next
 

@@ -8,14 +8,29 @@ import { sql } from "@/lib/db";
 // A Server Action compiles to a public HTTP endpoint. Its arguments are
 // attacker-controlled and the page that rendered the form is not a security
 // boundary, so the action validates its own input.
+// An empty field arrives as "", which coerces to 0 and would fail .positive(),
+// so blank is mapped to undefined before the inner schema sees it. These
+// columns are nullable: blank means "not stated".
+const blank = (v: unknown) =>
+  typeof v === "string" && v.trim() === "" ? undefined : v;
+
 const NewProposal = z.object({
   hotelName: z.string().trim().min(1).max(120),
   eventName: z.string().trim().min(1).max(120),
-  // An empty field arrives as "", which coerces to 0 and would fail
-  // .positive(). guest_count is nullable: blank means "not stated".
   guestCount: z.preprocess(
-    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    blank,
     z.coerce.number().int().positive().max(10000).optional(),
+  ),
+  arrivalDate: z.preprocess(
+    blank,
+    z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+  ),
+  nights: z.preprocess(
+    blank,
+    z.coerce.number().int().positive().max(365).optional(),
   ),
 });
 
@@ -37,6 +52,21 @@ const LineItem = z.object({
   unitPriceMinor: MoneyMinor,
 });
 
+// The raw extraction is round-tripped through a hidden field, so it is
+// client-controlled like everything else here and is re-validated rather than
+// trusted. Anything that does not match is dropped, not rejected: a bad blob
+// should not stop a human creating a proposal they have already checked.
+const EnquiryRecord = z.object({
+  eventType: z.string().max(200).nullable(),
+  arrivalDate: z.string().max(20).nullable(),
+  nights: z.number().int().nullable(),
+  guestCount: z.number().int().nullable(),
+  items: z
+    .array(z.object({ label: z.string().max(200), quantity: z.number().int().nullable() }))
+    .max(10),
+  confidence: z.enum(["high", "medium", "low"]),
+});
+
 export type CreateProposalState = { ok: true } | { error: string };
 
 export async function createProposal(
@@ -47,7 +77,22 @@ export async function createProposal(
   // A flat message: returning parsed.error would leak the schema shape.
   if (!parsed.success) return { error: "Please check the fields." };
 
-  const { hotelName, eventName, guestCount } = parsed.data;
+  const { hotelName, eventName, guestCount, arrivalDate, nights } = parsed.data;
+
+  const enquiryRaw = String(formData.get("enquiry") ?? "");
+  let enquiry: string | null = null;
+  if (enquiryRaw.trim() !== "" && enquiryRaw.length <= 4000) {
+    const record = EnquiryRecord.safeParse(
+      (() => {
+        try {
+          return JSON.parse(enquiryRaw);
+        } catch {
+          return null;
+        }
+      })(),
+    );
+    if (record.success) enquiry = JSON.stringify(record.data);
+  }
 
   // Line items arrive as parallel arrays, so getAll rather than
   // Object.fromEntries, which keeps only the last value of a repeated name.
@@ -86,8 +131,12 @@ export async function createProposal(
 
   await sql.transaction([
     sql`
-      insert into proposals (id, share_token, hotel_name, event_name, guest_count, status)
-      values (${id}, ${token}, ${hotelName}, ${eventName}, ${guestCount ?? null}, 'sent')
+      insert into proposals
+        (id, share_token, hotel_name, event_name, guest_count,
+         arrival_date, nights, status, enquiry)
+      values
+        (${id}, ${token}, ${hotelName}, ${eventName}, ${guestCount ?? null},
+         ${arrivalDate ?? null}, ${nights ?? null}, 'sent', ${enquiry}::jsonb)
     `,
     ...items.map(
       (it, i) => sql`
